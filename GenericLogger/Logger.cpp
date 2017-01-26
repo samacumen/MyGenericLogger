@@ -18,10 +18,8 @@ Logger* Logger::m_Instance = 0;
 // Log file name. File name should be change from here only
 const string logFileName = LOG_FILE_NAME;
 
-// Tags that are persistently logged
-#define ALWAYS_TAG "[ALWAYS]: "
-
 // Tags that are logged as per user's will
+#define ALWAYS_TAG "[ALWAYS]: "
 #define FATAL_TAG "[FATAL]: "
 #define ERROR_TAG "[ERROR]: "
 #define WARNING_TAG "[WARNING]: "
@@ -102,21 +100,6 @@ Logger* Logger::getInstance() throw ()
    return m_Instance;
 }
 
-void Logger::persistent_logging(const std::string& tag, const char* text) throw()
-{
-    string data;
-    data.append(tag);
-    data.append(__PRETTY_FUNCTION__);
-    data.append(text);
-
-    logInto(data, m_LogType);
-}
-
-void Logger::persistent_logging(const std::string& tag, std::string& text) throw()
-{
-    persistent_logging(tag, text.data());
-}
-
 ///
 /// Interface for Buffer Log. Buffer is the special case. So don't add log level
 /// and timestamp in the buffer message. Just log the raw bytes.
@@ -126,33 +109,7 @@ void Logger::buffer_log(LOG_LEVEL level, const char* text) throw()
     if (m_LogLevel < level) //LOG_LEVEL_BUFFER
         return;
 
-   if(m_LogType == FILE_LOG)
-   {
-      lock();
-      m_File << text << endl;
-      unlock();
-   }
-   else if(m_LogType == CONSOLE)
-   {
-      cout << text << endl;
-   }
-}
-
-///
-/// Interface for buffer log. Overload for std::string.
-///
-void Logger::buffer_log(LOG_LEVEL level, std::string& text) throw()
-{
-   buffer_log(level, text.data());
-}
-
-///
-/// Interface for buffer log. Overload for stream.
-///
-void Logger::buffer_log(LOG_LEVEL level, std::ostringstream& stream) throw()
-{
-   string text = stream.str();
-   buffer_log(level, text.data());
+    log_direct_buffer(text);
 }
 
 ///
@@ -171,7 +128,7 @@ void Logger::user_log(LOG_LEVEL level, std::string pretty_func, std::string func
    data.append("() - ");
    data.append(text);
 
-   logInto(data, m_LogType);
+   log_direct(data);
 }
 
 ///
@@ -181,6 +138,7 @@ std::string Logger::getLogTypeTag(LOG_LEVEL level)
 {
     switch (level)
     {
+        case ALWAYS_LOG_THIS:   return ALWAYS_TAG;
         case LOG_LEVEL_FATAL:   return FATAL_TAG;
         case LOG_LEVEL_ERROR:   return ERROR_TAG;
         case LOG_LEVEL_WARNING: return WARNING_TAG;
@@ -213,8 +171,7 @@ void Logger::unlock()
 ///
 /// A generic function where string data to be logged along with the desired log type
 /// can be provided. This logs into a text file or console.
-///
-void Logger::logInto(string &data, LOG_TYPE type)
+void Logger::log_direct(std::string data) throw()
 {
     if(m_LogType == FILE_LOG)
     {
@@ -226,6 +183,21 @@ void Logger::logInto(string &data, LOG_TYPE type)
     }
 }
 
+///
+/// A generic function for logging into buffer directly..
+void Logger::log_direct_buffer(const char* text) throw()
+{
+    if(m_LogType == FILE_LOG)
+    {
+       lock();
+       m_File << text << endl;
+       unlock();
+    }
+    else if(m_LogType == CONSOLE)
+    {
+       cout << text << endl;
+    }
+}
 ///
 /// This logs into a text file.
 ///
